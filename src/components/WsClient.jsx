@@ -26,10 +26,13 @@ let wsHost = '';
 const WsClient = (props) => {
 
   const [state, setState] = useTracked();
+  // console.log(JSON.stringify(state))
   const [connection, setConnection] = useState({ connected: false, connecting: false });
 
   const host = useRef();
   const payload = useRef();
+  const response = useRef();
+  // console.log(JSON.stringify(response))
   const stateRef = useRef({
     connectionLog: state.connectionLog,
     retryCount: 0,
@@ -47,6 +50,14 @@ const WsClient = (props) => {
     }
     payload.current.value = state.payloads.find(payload => payload.id === state.activePayload)?.payload;
   }, [state.activePayload, state.payloads, setState]);
+
+  useEffect(() => {
+    let currentResponse = state.responses.find(response => response.id === state.activeResponse);
+    if (!currentResponse) {
+      setState(prev => ({ ...prev, activeResponse: '0' }));
+    }
+    response.current.value = state.responses.find(response => response.id === state.activeResponse)?.response;
+  }, [state.activeResponse, state.responses, setState]);
 
   const updateLog = (log) => {
     stateRef.current.connectionLog.unshift(log);
@@ -71,10 +82,11 @@ const WsClient = (props) => {
     });
     setConnection({ ...connection, connected: true, connecting: false });
     payload.current.focus();
+    response.current.focus();
   };
 
   const onMessage = (event) => {
-    // console.log(event);
+    console.log(event);
     updateLog({
       datetime: dayjs().format('YYYY-MM-DD hh:mm:ss A'),
       message: `Message received from "${event.origin}"`,
@@ -85,7 +97,7 @@ const WsClient = (props) => {
 
   const onError = (event) => {
     // Error handling
-    // console.error(event);
+    console.error(event);
     updateLog({
       datetime: dayjs().format('YYYY-MM-DD hh:mm:ss A'),
       message: `Could not connect to "${event.target.url}". You may be able to find more information using inspector.`
@@ -95,7 +107,7 @@ const WsClient = (props) => {
 
   const onClose = (event) => {
     // Close handling
-    // console.log(event);
+    console.log(event);
     updateLog({
       datetime: dayjs().format('YYYY-MM-DD hh:mm:ss A'),
       message: `Connection closed "${event.target.url}"`
@@ -155,14 +167,15 @@ const WsClient = (props) => {
   };
 
   const sendMessage = (message) => {
-    // console.log(websocket?.readyState);
+    console.log(websocket?.readyState);
     setState(prev => ({
-      ...prev, payloads: state.payloads.map(item => {
+      ...prev, 
+      payloads: state.payloads.map(item => {
         if (item.id === state.activePayload) {
           return { ...item, payload: message };
         }
         return item;
-      })
+      }),
     }));
     switch (websocket?.readyState) {
       case 1:
@@ -178,6 +191,39 @@ const WsClient = (props) => {
         }
 
         Notification.error({ title: 'Error', description: 'Payload is empty.' });
+        break;
+
+      default:
+        Notification.error({ title: 'Error', description: 'Websocket disconnected.' });
+        break;
+    }
+
+  };
+
+  const sendMessageResponse = (message) => {
+    console.log(websocket?.readyState);
+    setState(prev => ({
+      responses: state.responses.map(item => {
+        if (item.id === state.activeResponse) {
+          return { ...item, response: message };
+        }
+        return item;
+      })
+    }));
+    switch (websocket?.readyState) {
+      case 1:
+        if (message) {
+          websocket.send(message);
+          updateLog({
+            datetime: dayjs().format('YYYY-MM-DD hh:mm:ss A'),
+            message: `Response send to "${wsHost}"`,
+            response: message,
+            dataflow: 'outgoing'
+          });
+          break;
+        }
+
+        Notification.error({ title: 'Error', description: 'Response is empty.' });
         break;
 
       default:
@@ -237,12 +283,18 @@ const WsClient = (props) => {
                 id: `${max}`,
                 label: `Payload ${max}`,
                 payload: ``
+              }],
+              responses: [...prev.responses, {
+                id: `${max}`,
+                label: `Response ${max}`,
+                response: ``
               }]
             }));
           }
           else if (key) {
             payload.current.value = state.payloads.find(payload => payload.id === key).payload
-            setState(prev => ({ ...prev, activePayload: key }));
+            response.current.value = state.response.find(response => response.id === key).response
+            setState(prev => ({ ...prev, activeResponse: key }));
           }
 
         }}>
@@ -294,7 +346,7 @@ const WsClient = (props) => {
           style={{
             borderColor: connection.connected ? "rgba(0, 235, 0, 1)" : "",
           }}
-          inputRef={payload}
+          inputRef={response}
           componentClass="textarea"
           rows={6}
           placeholder="Expected response"
@@ -303,11 +355,18 @@ const WsClient = (props) => {
           <Col xs={24} sm={24} md={8} lg={8}>
             <Button appearance="ghost" block color="orange" onClick={() => {
               payload.current.value = '';
+              response.current.value = '';
               setState(prev => ({
                 ...prev,
                 payloads: state.payloads.map(item => {
                   if (item.id === state.activePayload) {
                     return { ...item, payload: '' };
+                  }
+                  return item;
+                }),
+                responses: state.responses.map(item => {
+                  if (item.id === state.activeResponse) {
+                    return { ...item, response: '' };
                   }
                   return item;
                 })
@@ -323,12 +382,21 @@ const WsClient = (props) => {
                     return { ...item, payload: payload.current.value };
                   }
                   return item;
+                }),
+                responses: state.responses.map(item => {
+                  if (item.id === state.activeResponses) {
+                    return { ...item, response: response.current.value };
+                  }
+                  return item;
                 })
               }));
             }}><Icon icon="save" /> Save Payload</Button>
           </Col>
           <Col xs={24} sm={24} md={8} lg={8}>
-            <Button appearance="primary" block onClick={() => sendMessage(payload.current.value)}><Icon icon="realtime" /> Send Payload</Button>
+            <Button appearance="primary" block onClick={() => {
+                                                                sendMessage(payload.current.value)
+                                                                // sendMessageResponse(response.current.value)
+                                                              }}><Icon icon="realtime" /> Send Payload</Button>
           </Col>
         </Row>
       </Panel>

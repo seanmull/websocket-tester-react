@@ -6,14 +6,19 @@ import { loadState, saveState } from './Helpers';
 
 const globalState = {
   // Declare your global variables here
-  host: 'localhost:6001',
+  host: 'live.dev.nightlifr.com:9090/hl/websocket',
   protocols: '',
   payload: '',
   activePayload: '0',
   payloads: [
     {id: '0', label: 'Default', payload: ''}
   ],
-  secure: true,
+  response: '',
+  activeResponse: '0',
+  responses: [
+    {id: '0', label: 'Default', response: ''}
+  ],
+  secure: false,
   autoConnect: false,
   connectionLog: [{
     datetime: dayjs().format('YYYY-MM-DD hh:mm:ss A'),
