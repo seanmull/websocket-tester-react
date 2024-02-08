@@ -290,6 +290,15 @@ const WsClient = (props) => {
           rows={6}
           placeholder="Payload to send"
         />
+        <Input
+          style={{
+            borderColor: connection.connected ? "rgba(0, 235, 0, 1)" : "",
+          }}
+          inputRef={payload}
+          componentClass="textarea"
+          rows={6}
+          placeholder="Expected response"
+        />
         <Row gutter={16} className="show-grid">
           <Col xs={24} sm={24} md={8} lg={8}>
             <Button appearance="ghost" block color="orange" onClick={() => {
